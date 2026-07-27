@@ -201,5 +201,5 @@ if __name__ == "__main__":
         LOG_LEVEL
     )
 
-    run_monitor()
+    process_weather_alerts()
 ```
