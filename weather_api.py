@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 HEADERS = {
     "User-Agent": (
         "Nationwide Severe Weather Alert System "
-        "(contact: your_email@example.com)"
+        "(contact: Steven@boatfix.com)"
     ),
     "Accept": "application/geo+json"
 }
