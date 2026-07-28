@@ -1,4 +1,3 @@
-
 """
 Email Notification Module.
 
@@ -43,15 +42,13 @@ def format_alert_html(alerts):
         <html>
         <body>
             <h2>No Active Severe Weather Alerts</h2>
-            <p>The monitoring system completed a check
-            and found no qualifying alerts.</p>
+            <p>No qualifying weather alerts were found.</p>
         </body>
         </html>
         """
 
 
     alert_sections = ""
-
 
     for alert in alerts:
 
@@ -66,7 +63,7 @@ def format_alert_html(alerts):
         </p>
 
         <p>
-        <strong>Area:</strong>
+        <strong>Affected Area:</strong>
         {alert.get('area')}
         </p>
 
@@ -90,9 +87,7 @@ def format_alert_html(alerts):
     <html>
     <body>
 
-    <h1>
-    National Severe Weather Alert
-    </h1>
+    <h1>National Severe Weather Alert</h1>
 
     <p>
     The National Weather Service has issued
@@ -111,6 +106,7 @@ def format_alert_html(alerts):
     </body>
     </html>
     """
+
 
 
 def create_email(alerts, map_file=None):
@@ -136,12 +132,14 @@ def create_email(alerts, map_file=None):
         f"{len(alerts)} Active Alert(s)"
     )
 
+
     message["From"] = formataddr(
         (
             "Weather Monitoring System",
             EMAIL_FROM
         )
     )
+
 
     message["To"] = EMAIL_TO
 
@@ -226,7 +224,7 @@ def send_email(message):
 
 def send_weather_alert(alerts, map_file=None):
     """
-    Convenience function used by main.py.
+    Creates and sends a weather alert email.
     """
 
     email = create_email(
@@ -237,7 +235,6 @@ def send_weather_alert(alerts, map_file=None):
     return send_email(
         email
     )
-
 
 
 if __name__ == "__main__":
