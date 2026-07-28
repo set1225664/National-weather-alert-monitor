@@ -94,23 +94,52 @@ def filter_severe_alerts(alerts):
     return severe_alerts
 
 
-def get_national_severe_alerts():
+def get_national_hurricane_alerts():
     """
-    Main function used by the monitoring system.
+    Retrieves only hurricane-related alerts
+    from the National Weather Service.
 
-    Retrieves and filters nationwide alerts.
+    Returns:
+        list:
+            Hurricane alerts only
     """
 
     alerts = get_active_alerts()
 
-    if ACTIVE_ALERTS_ONLY:
-        alerts = [
-            alert for alert in alerts
-            if alert.get("properties", {})
-            .get("status") == "Actual"
-        ]
+    hurricane_events = [
+        "Hurricane Warning",
+        "Hurricane Watch",
+        "Tropical Storm Warning",
+        "Tropical Storm Watch",
+        "Storm Surge Warning",
+        "Storm Surge Watch"
+    ]
 
-    return filter_severe_alerts(alerts)
+
+    hurricane_alerts = []
+
+
+    for alert in alerts:
+
+        properties = alert.get(
+            "properties",
+            {}
+        )
+
+        event = properties.get(
+            "event",
+            ""
+        )
+
+
+        if event in hurricane_events:
+
+            hurricane_alerts.append(
+                alert
+            )
+
+
+    return hurricane_alerts
 
 
 def summarize_alert(alert):
