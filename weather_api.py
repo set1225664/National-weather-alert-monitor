@@ -1,4 +1,4 @@
-```python
+
 """
 National Weather Service API integration.
 
@@ -182,4 +182,3 @@ if __name__ == "__main__":
         print(
             summarize_alert(alert)
         )
-```
