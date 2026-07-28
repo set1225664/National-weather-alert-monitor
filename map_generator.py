@@ -83,7 +83,7 @@ def generate_national_alert_map(alerts):
 
     fig = plt.figure(
         figsize=(12, 8),
-        dpi=MAP_DPI
+        MAP_DPI=300
     )
 
     ax = plt.axes(
@@ -92,16 +92,15 @@ def generate_national_alert_map(alerts):
 
 
     # United States viewing area
-    ax.set_extent(
-        [
-            -130,
-            -60,
-            20,
-            55
-        ],
-        crs=ccrs.PlateCarree()
-    )
-
+   ax.set_extent(
+    [
+        min_lon - 5,
+        max_lon + 5,
+        min_lat - 5,
+        max_lat + 5
+    ],
+    crs=ccrs.PlateCarree()
+)
 
     # Base map layers
     cfeature.NaturalEarthFeature(
@@ -241,3 +240,7 @@ if __name__ == "__main__":
     print(
         "Map generator module loaded."
     )
+ax.gridlines(
+    draw_labels=True,
+    linewidth=0.5
+)
