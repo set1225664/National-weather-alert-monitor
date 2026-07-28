@@ -1,4 +1,4 @@
-```python
+
 """
 Weather Alert Map Generator.
 
@@ -245,4 +245,3 @@ if __name__ == "__main__":
     print(
         "Map generator module loaded."
     )
-```
