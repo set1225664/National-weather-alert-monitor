@@ -26,7 +26,7 @@ from config import (
 from utils import setup_logging
 
 from weather_api import (
-    get_national_severe_alerts,
+    get_national_hurricane_alerts,
     summarize_alert
 )
 
@@ -59,7 +59,7 @@ def process_weather_alerts():
 
 
     # Retrieve active severe alerts
-    alerts = get_national_severe_alerts()
+  alerts = get_national_hurricane_alerts()
 
 
     logger.info(
