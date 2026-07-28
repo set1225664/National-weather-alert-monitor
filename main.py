@@ -1,4 +1,4 @@
-```python
+
 """
 Main Application Controller.
 
@@ -202,4 +202,3 @@ if __name__ == "__main__":
     )
 
     process_weather_alerts()
-```
