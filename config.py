@@ -1,21 +1,26 @@
-
 """
-Configuration module for Nationwide Severe Weather Alert System.
+Configuration Module.
 
-Loads environment variables from .env and provides
-application-wide settings.
+Loads environment variables and provides
+configuration settings for the Nationwide
+Hurricane Alert Monitoring System.
 """
 
 import os
+
 from dotenv import load_dotenv
 
-# Load environment variables
+
+# Load .env file when running locally
+# GitHub Actions will provide variables
+# through repository secrets.
 load_dotenv()
 
 
-# ==================================
-# National Weather Service API
-# ==================================
+
+# -------------------------------------------------
+# Weather Monitoring Configuration
+# -------------------------------------------------
 
 NWS_API_URL = os.getenv(
     "NWS_API_URL",
@@ -23,91 +28,27 @@ NWS_API_URL = os.getenv(
 )
 
 
-# ==================================
-# Geographic Monitoring
-# ==================================
-
-# Nationwide monitoring mode
 MONITOR_SCOPE = os.getenv(
     "MONITOR_SCOPE",
     "UNITED_STATES"
 )
 
 
-# ==================================
-# Alert Filtering
-# ==================================
-
-MIN_ALERT_SEVERITY = os.getenv(
-    "MIN_ALERT_SEVERITY",
-    "Severe"
-)
-
-ACTIVE_ALERTS_ONLY = os.getenv(
-    "ACTIVE_ALERTS_ONLY",
-    "true"
-).lower() == "true"
-
-MONITOR_ALL_HAZARDS = os.getenv(
-    "MONITOR_ALL_HAZARDS",
-    "true"
-).lower() == "true"
+# Only hurricane-related events
+HURRICANE_EVENTS = [
+    "Hurricane Warning",
+    "Hurricane Watch",
+    "Tropical Storm Warning",
+    "Tropical Storm Watch",
+    "Storm Surge Warning",
+    "Storm Surge Watch"
+]
 
 
-# ==================================
-# Email Configuration
-# ==================================
 
-SMTP_SERVER = os.getenv(
-    "SMTP_SERVER",
-    "smtp.gmail.com"
-)
-
-SMTP_PORT = int(
-    os.getenv(
-        "SMTP_PORT",
-        "587"
-    )
-)
-
-EMAIL_FROM = os.getenv(
-    "EMAIL_FROM"
-)
-
-EMAIL_TO = os.getenv(
-    "EMAIL_TO"
-)
-
-EMAIL_PASSWORD = os.getenv(
-    "EMAIL_PASSWORD"
-)
-
-
-# ==================================
-# Weather Map Configuration
-# ==================================
-
-GENERATE_MAPS = os.getenv(
-    "GENERATE_MAPS",
-    "true"
-).lower() == "true"
-
-INCLUDE_ALERT_MAPS = os.getenv(
-    "INCLUDE_ALERT_MAPS",
-    "true"
-).lower() == "true"
-
-MAP_DPI = int(
-    os.getenv(
-        "MAP_DPI",
-        "150"
-    )
-)
-
-
-# ==================================
+# -------------------------------------------------
 # Monitoring Schedule
-# ==================================
+# -------------------------------------------------
 
 CHECK_INTERVAL = int(
     os.getenv(
@@ -117,9 +58,86 @@ CHECK_INTERVAL = int(
 )
 
 
-# ==================================
+
+# -------------------------------------------------
+# Alert Filtering
+# -------------------------------------------------
+
+MIN_ALERT_SEVERITY = os.getenv(
+    "MIN_ALERT_SEVERITY",
+    "Severe"
+)
+
+
+TEST_MODE = os.getenv(
+    "TEST_MODE",
+    "false"
+).lower() == "true"
+
+
+
+# -------------------------------------------------
+# Map Generation
+# -------------------------------------------------
+
+GENERATE_MAPS = os.getenv(
+    "GENERATE_MAPS",
+    "true"
+).lower() == "true"
+
+
+MAP_OUTPUT_DIR = os.getenv(
+    "MAP_OUTPUT_DIR",
+    "maps"
+)
+
+
+MAP_DPI = int(
+    os.getenv(
+        "MAP_DPI",
+        "300"
+    )
+)
+
+
+
+# -------------------------------------------------
+# Email Configuration
+# -------------------------------------------------
+
+SMTP_SERVER = os.getenv(
+    "SMTP_SERVER",
+    "smtp.gmail.com"
+)
+
+
+SMTP_PORT = int(
+    os.getenv(
+        "SMTP_PORT",
+        "587"
+    )
+)
+
+
+EMAIL_FROM = os.getenv(
+    "EMAIL_FROM"
+)
+
+
+EMAIL_TO = os.getenv(
+    "EMAIL_TO"
+)
+
+
+EMAIL_PASSWORD = os.getenv(
+    "EMAIL_PASSWORD"
+)
+
+
+
+# -------------------------------------------------
 # Logging
-# ==================================
+# -------------------------------------------------
 
 LOG_LEVEL = os.getenv(
     "LOG_LEVEL",
@@ -127,34 +145,27 @@ LOG_LEVEL = os.getenv(
 )
 
 
-# ==================================
-# Alert Severity Priority
-# ==================================
 
-SEVERITY_PRIORITY = {
-    "Extreme": 4,
-    "Severe": 3,
-    "Moderate": 2,
-    "Minor": 1
-}
+# -------------------------------------------------
+# Alert History
+# -------------------------------------------------
+
+ALERT_HISTORY_FILE = os.getenv(
+    "ALERT_HISTORY_FILE",
+    "alert_history.json"
+)
 
 
-def is_severe_alert(severity: str) -> bool:
-    """
-    Determines whether an alert meets
-    the configured severity threshold.
-    """
 
-    minimum = SEVERITY_PRIORITY.get(
-        MIN_ALERT_SEVERITY,
-        3
-    )
+# -------------------------------------------------
+# Application Information
+# -------------------------------------------------
 
-    alert_level = SEVERITY_PRIORITY.get(
-        severity,
-        0
-    )
+APP_NAME = (
+    "Nationwide Hurricane Alert Monitor"
+)
 
-    return alert_level >= minimum
 
-TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+APP_VERSION = (
+    "1.0.0"
+)
