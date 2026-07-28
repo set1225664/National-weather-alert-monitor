@@ -50,55 +50,42 @@ logger = logging.getLogger(__name__)
 
 def process_weather_alerts():
     """
-    Executes one complete monitoring cycle.
+    Executes one complete hurricane monitoring cycle.
     """
 
     logger.info(
-    "Checking National Weather Service alerts..."
-)
+        "Checking National Weather Service hurricane alerts..."
+    )
 
+    # Retrieve active hurricane alerts
+    alerts = get_national_hurricane_alerts()
 
-# Retrieve active hurricane alerts
-alerts = get_national_hurricane_alerts()
-
-
-logger.info(
-    "Hurricane alerts detected: %s",
-    len(alerts)
-)
-
+    logger.info(
+        "Hurricane alerts detected: %s",
+        len(alerts)
+    )
 
     if not alerts:
-
         logger.info(
-            "No severe alerts found."
+            "No hurricane alerts found."
         )
-
         return
-
-
 
     # Remove alerts already emailed
     new_alerts = get_new_alerts(
         alerts
     )
 
-
     logger.info(
-        "New alerts requiring notification: %s",
+        "New hurricane alerts requiring notification: %s",
         len(new_alerts)
     )
 
-
     if not new_alerts:
-
         logger.info(
-            "No new alerts to send."
+            "No new hurricane alerts to send."
         )
-
         return
-
-
 
     # Convert alerts for email formatting
     alert_summaries = [
@@ -106,40 +93,33 @@ logger.info(
         for alert in new_alerts
     ]
 
-
-
     # Generate map attachment
     map_file = None
-
 
     if GENERATE_MAPS:
 
         logger.info(
-            "Generating weather alert map..."
+            "Generating hurricane alert map..."
         )
 
         map_file = generate_national_alert_map(
             new_alerts
         )
 
-
-
     # Send email notification
     logger.info(
-        "Sending weather notification..."
+        "Sending hurricane notification..."
     )
-
 
     email_sent = send_weather_alert(
         alert_summaries,
         map_file
     )
 
-
     if email_sent:
 
         logger.info(
-            "Notification sent successfully."
+            "Hurricane notification sent successfully."
         )
 
         update_alert_history(
@@ -149,8 +129,7 @@ logger.info(
     else:
 
         logger.error(
-            "Notification failed. "
-            "Alerts will be retried."
+            "Notification failed. Alerts will be retried."
         )
 
 
