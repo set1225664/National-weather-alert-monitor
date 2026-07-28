@@ -1,4 +1,4 @@
-```python
+
 """
 Configuration module for Nationwide Severe Weather Alert System.
 
@@ -156,4 +156,3 @@ def is_severe_alert(severity: str) -> bool:
     )
 
     return alert_level >= minimum
-```
