@@ -73,6 +73,25 @@ HURRICANE_EVENTS = [
 ]
 
 
+def is_severe_alert(alert):
+
+    if not alert:
+        return False
+
+    properties = alert.get(
+        "properties",
+        {}
+    )
+
+    severity = properties.get(
+        "severity",
+        ""
+    )
+
+    return severity in [
+        "Severe",
+        "Extreme"
+    ]
 # -------------------------------------------------
 # Monitoring Schedule
 # -------------------------------------------------
