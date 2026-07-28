@@ -104,17 +104,13 @@ def generate_national_alert_map(alerts):
 
 
     # Base map layers
-    ax.add_feature(
-        cfeature.STATES
-    )
-
-    ax.add_feature(
-        cfeature.BORDERS
-    )
-
-    ax.add_feature(
-        cfeature.COASTLINE
-    )
+    cfeature.NaturalEarthFeature(
+    "cultural",
+    "admin_1_states_provinces",
+    "10m",
+    edgecolor="black",
+    facecolor="none"
+)
 
 
     alert_count = 0
