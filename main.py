@@ -54,18 +54,18 @@ def process_weather_alerts():
     """
 
     logger.info(
-        "Checking National Weather Service alerts..."
-    )
+    "Checking National Weather Service alerts..."
+)
 
 
-    # Retrieve active severe alerts
-  alerts = get_national_hurricane_alerts()
+# Retrieve active hurricane alerts
+alerts = get_national_hurricane_alerts()
 
 
-    logger.info(
-        "Severe alerts detected: %s",
-        len(alerts)
-    )
+logger.info(
+    "Hurricane alerts detected: %s",
+    len(alerts)
+)
 
 
     if not alerts:
