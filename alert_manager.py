@@ -1,4 +1,4 @@
-```python
+
 """
 Alert Manager Module.
 
@@ -222,4 +222,3 @@ if __name__ == "__main__":
     print(
         "Alert manager module loaded."
     )
-```
