@@ -202,3 +202,16 @@ if __name__ == "__main__":
     )
 
     process_weather_alerts()
+
+if TEST_MODE:
+    alerts = [{
+        "properties": {
+            "id": "TEST-001",
+            "event": "Test Tornado Warning",
+            "severity": "Extreme",
+            "headline": "This is a test alert.",
+            "areaDesc": "United States",
+            "expires": "2099-12-31T23:59:59Z",
+            "description": "This is only a test."
+        }
+    }]
