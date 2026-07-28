@@ -11,15 +11,29 @@ import os
 from dotenv import load_dotenv
 
 
-# Load .env file when running locally
-# GitHub Actions will provide variables
+# Load local .env file.
+# GitHub Actions will provide these values
 # through repository secrets.
 load_dotenv()
 
 
+# -------------------------------------------------
+# Application Information
+# -------------------------------------------------
+
+APP_NAME = os.getenv(
+    "APP_NAME",
+    "Nationwide Hurricane Alert Monitor"
+)
+
+APP_VERSION = os.getenv(
+    "APP_VERSION",
+    "1.0.0"
+)
+
 
 # -------------------------------------------------
-# Weather Monitoring Configuration
+# National Weather Service Configuration
 # -------------------------------------------------
 
 NWS_API_URL = os.getenv(
@@ -27,14 +41,28 @@ NWS_API_URL = os.getenv(
     "https://api.weather.gov"
 )
 
-
 MONITOR_SCOPE = os.getenv(
     "MONITOR_SCOPE",
     "UNITED_STATES"
 )
 
 
-# Only hurricane-related events
+# -------------------------------------------------
+# Hurricane Alert Filtering
+# -------------------------------------------------
+
+ACTIVE_ALERTS_ONLY = os.getenv(
+    "ACTIVE_ALERTS_ONLY",
+    "true"
+).lower() == "true"
+
+
+MIN_ALERT_SEVERITY = os.getenv(
+    "MIN_ALERT_SEVERITY",
+    "Severe"
+)
+
+
 HURRICANE_EVENTS = [
     "Hurricane Warning",
     "Hurricane Watch",
@@ -43,7 +71,6 @@ HURRICANE_EVENTS = [
     "Storm Surge Warning",
     "Storm Surge Watch"
 ]
-
 
 
 # -------------------------------------------------
@@ -58,16 +85,9 @@ CHECK_INTERVAL = int(
 )
 
 
-
 # -------------------------------------------------
-# Alert Filtering
+# Test Configuration
 # -------------------------------------------------
-
-MIN_ALERT_SEVERITY = os.getenv(
-    "MIN_ALERT_SEVERITY",
-    "Severe"
-)
-
 
 TEST_MODE = os.getenv(
     "TEST_MODE",
@@ -75,9 +95,8 @@ TEST_MODE = os.getenv(
 ).lower() == "true"
 
 
-
 # -------------------------------------------------
-# Map Generation
+# Map Generation Configuration
 # -------------------------------------------------
 
 GENERATE_MAPS = os.getenv(
@@ -98,7 +117,6 @@ MAP_DPI = int(
         "300"
     )
 )
-
 
 
 # -------------------------------------------------
@@ -134,9 +152,8 @@ EMAIL_PASSWORD = os.getenv(
 )
 
 
-
 # -------------------------------------------------
-# Logging
+# Logging Configuration
 # -------------------------------------------------
 
 LOG_LEVEL = os.getenv(
@@ -145,27 +162,11 @@ LOG_LEVEL = os.getenv(
 )
 
 
-
 # -------------------------------------------------
-# Alert History
+# Alert History Configuration
 # -------------------------------------------------
 
 ALERT_HISTORY_FILE = os.getenv(
     "ALERT_HISTORY_FILE",
     "alert_history.json"
-)
-
-
-
-# -------------------------------------------------
-# Application Information
-# -------------------------------------------------
-
-APP_NAME = (
-    "Nationwide Hurricane Alert Monitor"
-)
-
-
-APP_VERSION = (
-    "1.0.0"
 )
