@@ -1,118 +1,121 @@
-
 """
-Weather Alert Map Generator.
+Hurricane Map Generator.
 
-Creates U.S. national maps showing active
-National Weather Service severe weather alerts.
+Creates detailed hurricane alert maps from
+National Weather Service alert data.
 """
 
 import os
 import logging
 from datetime import datetime
 
+import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
+
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 
-from config import MAP_DPI
+from shapely.geometry import shape
+
+from config import MAP_OUTPUT_DIR
 
 
 logger = logging.getLogger(__name__)
 
 
-# Output directory for generated maps
-MAP_OUTPUT_DIR = "maps"
-
-
 def create_output_directory():
     """
-    Ensures map output directory exists.
+    Creates map output directory if needed.
     """
 
     if not os.path.exists(MAP_OUTPUT_DIR):
         os.makedirs(MAP_OUTPUT_DIR)
 
 
-def get_alert_color(severity):
-    """
-    Returns map styling based on alert severity.
 
-    Note:
-    Colors are intentionally simple because
-    the alert type is communicated primarily
-    through labels and polygons.
+def add_base_map(ax):
+    """
+    Adds map background layers.
     """
 
-    severity_map = {
-        "Extreme": "red",
-        "Severe": "orange",
-        "Moderate": "yellow",
-        "Minor": "green"
-    }
-
-    return severity_map.get(
-        severity,
-        "gray"
+    ax.set_extent(
+        [
+            -100,
+            -60,
+            15,
+            55
+        ],
+        crs=ccrs.PlateCarree()
     )
 
 
-def generate_national_alert_map(alerts):
+    ax.add_feature(
+        cfeature.OCEAN
+    )
+
+    ax.add_feature(
+        cfeature.LAND
+    )
+
+    ax.add_feature(
+        cfeature.COASTLINE,
+        linewidth=0.8
+    )
+
+    ax.add_feature(
+        cfeature.BORDERS,
+        linewidth=0.8
+    )
+
+
+    states = cfeature.NaturalEarthFeature(
+        category="cultural",
+        name="admin_1_states_provinces_lines",
+        scale="50m",
+        facecolor="none"
+    )
+
+
+    ax.add_feature(
+        states,
+        linewidth=0.5
+    )
+
+
+
+def add_grid(ax):
     """
-    Generates a nationwide U.S. weather alert map.
+    Adds latitude and longitude grid.
+    """
+
+    grid = ax.gridlines(
+        draw_labels=True,
+        linewidth=0.5,
+        linestyle="--"
+    )
+
+
+    grid.top_labels = False
+    grid.right_labels = False
+
+
+
+def plot_alert_geometry(ax, alerts):
+    """
+    Draws hurricane alert polygons.
 
     Args:
-        alerts (list):
-            NWS alert feature objects
+        ax:
+            Cartopy axis
 
-    Returns:
-        str:
-            Path to generated image
+        alerts:
+            List of NWS alerts
     """
 
-    create_output_directory()
-
-    timestamp = datetime.utcnow().strftime(
-        "%Y%m%d_%H%M%S"
-    )
-
-    filename = (
-        f"{MAP_OUTPUT_DIR}/"
-        f"severe_weather_map_{timestamp}.png"
-    )
-
-
-    fig = plt.figure(
-        figsize=(12, 8),
-        MAP_DPI=300
-    )
-
-    ax = plt.axes(
-        projection=ccrs.LambertConformal()
-    )
-
-
-    # United States viewing area
-   ax.set_extent(
-    [
-        min_lon - 5,
-        max_lon + 5,
-        min_lat - 5,
-        max_lat + 5
-    ],
-    crs=ccrs.PlateCarree()
-)
-
-    # Base map layers
-    cfeature.NaturalEarthFeature(
-    "cultural",
-    "admin_1_states_provinces",
-    "10m",
-    edgecolor="black",
-    facecolor="none"
-)
-
-
-    alert_count = 0
+    plotted = 0
 
 
     for alert in alerts:
@@ -122,125 +125,164 @@ def generate_national_alert_map(alerts):
             {}
         )
 
+
         geometry = alert.get(
             "geometry"
         )
 
 
-        if not geometry:
+        if geometry is None:
             continue
 
 
-        severity = properties.get(
-            "severity",
-            "Unknown"
-        )
-
-        color = get_alert_color(
-            severity
-        )
-
-
         try:
-            coordinates = geometry.get(
-                "coordinates",
-                []
+
+            polygon = shape(
+                geometry
             )
 
-            if geometry.get(
-                "type"
-            ) == "Polygon":
 
-                for polygon in coordinates:
-
-                    longitude = [
-                        point[0]
-                        for point in polygon
-                    ]
-
-                    latitude = [
-                        point[1]
-                        for point in polygon
-                    ]
-
-                    ax.fill(
-                        longitude,
-                        latitude,
-                        transform=ccrs.PlateCarree(),
-                        alpha=0.35,
-                        label=severity
-                    )
-
-                    alert_count += 1
+            x, y = polygon.exterior.xy
 
 
-            elif geometry.get(
-                "type"
-            ) == "MultiPolygon":
+            ax.fill(
+                x,
+                y,
+                alpha=0.35,
+                transform=ccrs.PlateCarree()
+            )
 
-                for multipolygon in coordinates:
 
-                    for polygon in multipolygon:
+            ax.plot(
+                x,
+                y,
+                linewidth=1.5,
+                transform=ccrs.PlateCarree()
+            )
 
-                        longitude = [
-                            point[0]
-                            for point in polygon
-                        ]
 
-                        latitude = [
-                            point[1]
-                            for point in polygon
-                        ]
-
-                        ax.fill(
-                            longitude,
-                            latitude,
-                            transform=ccrs.PlateCarree(),
-                            alpha=0.35,
-                            label=severity
-                        )
-
-                        alert_count += 1
+            plotted += 1
 
 
         except Exception as error:
 
             logger.warning(
-                "Unable to plot alert polygon: %s",
+                "Unable to plot alert geometry: %s",
                 error
             )
 
 
-    plt.title(
-        "National Severe Weather Alerts\n"
-        f"Active Alerts: {alert_count}"
+    return plotted
+
+
+
+def generate_national_alert_map(alerts):
+    """
+    Generates hurricane alert map.
+
+    Args:
+        alerts:
+            NWS hurricane alerts
+
+    Returns:
+        str:
+            Generated PNG path
+    """
+
+    create_output_directory()
+
+
+    timestamp = datetime.utcnow().strftime(
+        "%Y%m%d_%H%M%S"
     )
 
 
-    plt.savefig(
-        filename,
-        bbox_inches="tight"
+    filename = (
+        f"hurricane_alert_map_{timestamp}.png"
     )
 
-    plt.close()
 
-
-    logger.info(
-        "Weather map created: %s",
+    filepath = os.path.join(
+        MAP_OUTPUT_DIR,
         filename
     )
 
 
-    return filename
+    figure = plt.figure(
+        figsize=(12, 9),
+        dpi=300
+    )
+
+
+    axis = plt.axes(
+        projection=ccrs.PlateCarree()
+    )
+
+
+    add_base_map(
+        axis
+    )
+
+
+    add_grid(
+        axis
+    )
+
+
+    polygons = plot_alert_geometry(
+        axis,
+        alerts
+    )
+
+
+    title = (
+        "National Hurricane Alert Map\n"
+        f"Active Alerts: {len(alerts)}"
+    )
+
+
+    plt.title(
+        title,
+        fontsize=16
+    )
+
+
+    plt.figtext(
+        0.5,
+        0.02,
+        (
+            f"Generated "
+            f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        ),
+        ha="center",
+        fontsize=10
+    )
+
+
+    plt.savefig(
+        filepath,
+        bbox_inches="tight"
+    )
+
+
+    plt.close(
+        figure
+    )
+
+
+    logger.info(
+        "Hurricane map created: %s | Alert polygons plotted: %s",
+        filepath,
+        polygons
+    )
+
+
+    return filepath
 
 
 
 if __name__ == "__main__":
 
     print(
-        "Map generator module loaded."
+        "Hurricane map generator loaded."
     )
-ax.gridlines(
-    draw_labels=True,
-    linewidth=0.5
-)
