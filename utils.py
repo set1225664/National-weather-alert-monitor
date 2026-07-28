@@ -1,4 +1,4 @@
-```python
+
 """
 Utility Functions Module.
 
@@ -196,4 +196,3 @@ if __name__ == "__main__":
     logging.info(
         "Utility module loaded."
     )
-```
