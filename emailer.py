@@ -1,27 +1,20 @@
 """
 Email Notification System.
 
-Creates and sends condensed severe tropical weather notifications.
+Creates and sends condensed tropical weather alert emails.
 
-Designed to work with:
+Features:
 
-    main.py
-    weather_api.py
-    map_generator.py
-
-Email format includes:
-
-1. Named storm / hurricane
-2. Alert type
-3. Severity
-4. Affected states
-5. Effective and expiration times
-6. Condensed NWS headline / description
-7. Safety instructions
-8. Generated weather alert map attachment
-
-County and zone lists are intentionally NOT displayed in the email.
-The email displays affected states instead.
+1. Named storm shown prominently
+2. Quick bullet-point storm summary
+3. Affected states instead of county lists
+4. Maximum winds when available
+5. Storm movement when available
+6. Pressure when available
+7. Effective / expiration times
+8. Short NWS headline
+9. Generated affected-area map embedded directly in the email
+10. Plain-text fallback
 """
 
 import logging
@@ -50,8 +43,6 @@ try:
     )
 
 except ImportError:
-    # Fallback configuration allows environment variables to be used
-    # if the names above are not defined in config.py.
 
     SMTP_SERVER = os.getenv(
         "SMTP_SERVER",
@@ -90,27 +81,40 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------
-# EMAIL APPEARANCE
+# DISPLAY SETTINGS
 # ---------------------------------------------------------------------
 
-SYSTEM_NAME = "Nationwide Severe Weather Alert System"
+SYSTEM_NAME = (
+    "Nationwide Severe Weather Alert System"
+)
 
-FROM_DISPLAY_NAME = "National Weather Alert Monitor"
+FROM_DISPLAY_NAME = (
+    "National Weather Alert Monitor"
+)
+
+MAP_CONTENT_ID = (
+    "affected-area-map"
+)
 
 
 # ---------------------------------------------------------------------
-# GENERAL HELPERS
+# BASIC HELPERS
 # ---------------------------------------------------------------------
 
-def safe_text(value, default=""):
+def safe_text(
+    value,
+    default=""
+):
     """
-    Safely convert a value into displayable text.
+    Return clean display text.
     """
 
     if value is None:
         return default
 
-    value = str(value).strip()
+    value = str(
+        value
+    ).strip()
 
     if not value:
         return default
@@ -118,17 +122,22 @@ def safe_text(value, default=""):
     return value
 
 
-def normalize_recipient_list(recipients):
+def normalize_recipient_list(
+    recipients
+):
     """
-    Convert EMAIL_TO into a clean list of recipient email addresses.
+    Convert EMAIL_TO into a list of email addresses.
 
     Supports:
 
-        "one@example.com"
+        one@example.com
 
-        "one@example.com,two@example.com"
+        one@example.com,two@example.com
 
-        ["one@example.com", "two@example.com"]
+        [
+            "one@example.com",
+            "two@example.com"
+        ]
     """
 
     if not recipients:
@@ -152,19 +161,23 @@ def normalize_recipient_list(recipients):
     ]
 
 
-def format_datetime(value):
+# ---------------------------------------------------------------------
+# DATE FORMATTING
+# ---------------------------------------------------------------------
+
+def format_datetime(
+    value
+):
     """
-    Convert an ISO NWS date/time string into a cleaner display format.
+    Format NWS ISO timestamps into a readable form.
 
     Example:
 
         2026-09-02T14:00:00-04:00
 
-    becomes approximately:
+    becomes:
 
         Sep 02, 2026 at 2:00 PM EDT
-
-    If parsing fails, the original value is returned.
     """
 
     value = safe_text(
@@ -183,19 +196,21 @@ def format_datetime(value):
             )
         )
 
-        timezone_name = parsed.tzname()
-
         formatted = parsed.strftime(
             "%b %d, %Y at %I:%M %p"
         )
 
-        # Remove leading zero from hour.
         formatted = formatted.replace(
             " at 0",
             " at "
         )
 
+        timezone_name = (
+            parsed.tzname()
+        )
+
         if timezone_name:
+
             formatted += (
                 f" {timezone_name}"
             )
@@ -210,24 +225,34 @@ def format_datetime(value):
         return value
 
 
-def get_alert_title(alert):
-    """
-    Build the primary display title for an alert.
+# ---------------------------------------------------------------------
+# ALERT INFORMATION
+# ---------------------------------------------------------------------
 
-    Preferred result:
+def get_alert_title(
+    alert
+):
+    """
+    Build the primary title.
+
+    Example:
 
         Hurricane Warning — Hurricane Gabrielle
     """
 
     title = safe_text(
-        alert.get("title")
+        alert.get(
+            "title"
+        )
     )
 
     if title:
         return title
 
     event = safe_text(
-        alert.get("event"),
+        alert.get(
+            "event"
+        ),
         "Weather Alert"
     )
 
@@ -260,11 +285,42 @@ def get_alert_title(alert):
     return event
 
 
-def get_states(alert):
+def get_display_storm_name(
+    alert
+):
     """
-    Return a clean list of affected states.
+    Return the best available storm name.
 
-    The updated weather_api.py provides affected_states directly.
+    Preferred:
+
+        Hurricane Gabrielle
+
+    Fallback:
+
+        Gabrielle
+    """
+
+    storm_name = safe_text(
+        alert.get(
+            "storm_display_name"
+        )
+    )
+
+    if storm_name:
+        return storm_name
+
+    return safe_text(
+        alert.get(
+            "storm_name"
+        )
+    )
+
+
+def get_states(
+    alert
+):
+    """
+    Return clean unique affected states.
     """
 
     states = alert.get(
@@ -272,7 +328,10 @@ def get_states(alert):
         []
     )
 
-    if isinstance(states, str):
+    if isinstance(
+        states,
+        str
+    ):
 
         states = [
             state.strip()
@@ -282,12 +341,16 @@ def get_states(alert):
 
     if not isinstance(
         states,
-        (list, tuple, set)
+        (
+            list,
+            tuple,
+            set
+        )
     ):
 
         states = []
 
-    cleaned_states = sorted(
+    return sorted(
         {
             safe_text(state)
             for state in states
@@ -295,16 +358,12 @@ def get_states(alert):
         }
     )
 
-    return cleaned_states
 
-
-def get_state_text(alert):
+def get_state_text(
+    alert
+):
     """
-    Return affected states as one concise display string.
-
-    Example:
-
-        Florida, Georgia, South Carolina
+    Return affected states as one line.
     """
 
     states = get_states(
@@ -317,7 +376,6 @@ def get_state_text(alert):
             states
         )
 
-    # Fallback to weather_api's condensed affected_area field.
     affected_area = safe_text(
         alert.get(
             "affected_area"
@@ -328,56 +386,52 @@ def get_state_text(alert):
 
         return affected_area
 
-    return "Affected area unavailable"
+    return (
+        "Affected area unavailable"
+    )
 
 
-def get_storm_names(alert_summaries):
+def get_storm_names(
+    alert_summaries
+):
     """
-    Return all unique named storms appearing in this notification.
+    Return unique storms included in the email.
     """
 
-    names = []
+    storm_names = []
 
     seen = set()
 
     for alert in alert_summaries:
 
-        name = safe_text(
-            alert.get(
-                "storm_display_name"
-            )
+        name = get_display_storm_name(
+            alert
         )
-
-        if not name:
-
-            name = safe_text(
-                alert.get(
-                    "storm_name"
-                )
-            )
 
         if not name:
             continue
 
-        lower_name = name.lower()
+        key = name.lower()
 
-        if lower_name in seen:
+        if key in seen:
             continue
 
         seen.add(
-            lower_name
+            key
         )
 
-        names.append(
+        storm_names.append(
             name
         )
 
-    return names
+    return storm_names
 
 
-def get_all_states(alert_summaries):
+def get_all_states(
+    alert_summaries
+):
     """
-    Return all unique states represented across the entire email.
+    Return all unique states affected across the email.
     """
 
     states = set()
@@ -396,20 +450,22 @@ def get_all_states(alert_summaries):
 
 
 # ---------------------------------------------------------------------
-# SUBJECT LINE
+# SUBJECT
 # ---------------------------------------------------------------------
 
-def build_email_subject(alert_summaries):
+def build_email_subject(
+    alert_summaries
+):
     """
-    Create a useful condensed subject line.
+    Create condensed subject.
 
     Examples:
 
+        WEATHER ALERT: Hurricane Gabrielle — Florida
+
         WEATHER ALERT: Hurricane Gabrielle — Florida, Georgia
 
-        WEATHER ALERT: Hurricane Warning — Florida
-
-        WEATHER ALERT: Hurricane Gabrielle — 4 States
+        WEATHER ALERT: 2 Tropical Systems — 5 States
     """
 
     if not alert_summaries:
@@ -440,51 +496,28 @@ def build_email_subject(alert_summaries):
 
     else:
 
-        event_types = []
+        first_alert = (
+            alert_summaries[0]
+        )
 
-        seen_events = set()
-
-        for alert in alert_summaries:
-
-            event = safe_text(
-                alert.get("event")
-            )
-
-            if not event:
-                continue
-
-            if event.lower() in seen_events:
-                continue
-
-            seen_events.add(
-                event.lower()
-            )
-
-            event_types.append(
-                event
-            )
-
-        if len(event_types) == 1:
-
-            primary = event_types[0]
-
-        else:
-
-            primary = (
-                "Severe Tropical Weather"
-            )
+        primary = safe_text(
+            first_alert.get(
+                "event"
+            ),
+            "Severe Tropical Weather"
+        )
 
     if len(states) == 1:
 
         location = states[0]
 
-    elif 1 < len(states) <= 3:
+    elif len(states) <= 3:
 
         location = ", ".join(
             states
         )
 
-    elif len(states) > 3:
+    elif states:
 
         location = (
             f"{len(states)} States/Territories"
@@ -495,7 +528,8 @@ def build_email_subject(alert_summaries):
         location = ""
 
     subject = (
-        f"WEATHER ALERT: {primary}"
+        f"WEATHER ALERT: "
+        f"{primary}"
     )
 
     if location:
@@ -508,261 +542,265 @@ def build_email_subject(alert_summaries):
 
 
 # ---------------------------------------------------------------------
-# HTML EMAIL
+# STORM FACTS
 # ---------------------------------------------------------------------
 
-def severity_badge_html(severity):
+def build_storm_facts(
+    alert
+):
     """
-    Return a simple severity badge.
-    """
+    Build concise facts for a storm.
 
-    severity = safe_text(
-        severity,
-        "Unknown"
-    )
+    weather_api.py can supply:
 
-    return f"""
-        <span
-            style="
-                display:inline-block;
-                padding:5px 10px;
-                border-radius:4px;
-                background:#eeeeee;
-                font-size:13px;
-                font-weight:bold;
-            "
-        >
-            {escape(severity)}
-        </span>
+        storm_status
+        max_winds
+        movement
+        pressure
+
+    Missing facts are simply omitted.
     """
 
-
-def build_alert_html(alert):
-    """
-    Build one condensed alert section.
-
-    County and zone details are deliberately excluded.
-    """
-
-    title = get_alert_title(
-        alert
-    )
+    facts = []
 
     event = safe_text(
-        alert.get("event"),
+        alert.get(
+            "event"
+        ),
         "Weather Alert"
     )
 
-    storm_name = safe_text(
-        alert.get(
-            "storm_display_name"
-        )
-    )
-
-    if not storm_name:
-
-        storm_name = safe_text(
-            alert.get(
-                "storm_name"
-            )
-        )
-
     severity = safe_text(
-        alert.get("severity"),
+        alert.get(
+            "severity"
+        ),
         "Unknown"
     )
 
     urgency = safe_text(
-        alert.get("urgency")
+        alert.get(
+            "urgency"
+        )
     )
 
-    states = get_state_text(
-        alert
+    storm_status = safe_text(
+        alert.get(
+            "storm_status"
+        )
     )
 
-    headline = safe_text(
-        alert.get("headline")
+    max_winds = safe_text(
+        alert.get(
+            "max_winds"
+        )
     )
 
-    description = safe_text(
-        alert.get("description")
+    movement = safe_text(
+        alert.get(
+            "movement"
+        )
     )
 
-    instruction = safe_text(
-        alert.get("instruction")
+    pressure = safe_text(
+        alert.get(
+            "pressure"
+        )
+    )
+
+    affected_states = (
+        get_state_text(
+            alert
+        )
     )
 
     effective = format_datetime(
-        alert.get("effective")
-    )
-
-    onset = format_datetime(
-        alert.get("onset")
-    )
-
-    expires_value = (
-        alert.get("ends")
-        or alert.get("expires")
+        alert.get(
+            "effective"
+        )
     )
 
     expires = format_datetime(
-        expires_value
+        alert.get(
+            "ends"
+        )
+        or alert.get(
+            "expires"
+        )
     )
 
-    # -------------------------------------------------------------
-    # NAMED STORM
-    # -------------------------------------------------------------
+    facts.append(
+        (
+            "Alert",
+            event
+        )
+    )
 
-    storm_html = ""
+    if storm_status:
 
-    if storm_name:
+        facts.append(
+            (
+                "Storm Status",
+                storm_status
+            )
+        )
 
-        storm_html = f"""
-            <div
-                style="
-                    margin-bottom:16px;
-                    padding:12px 14px;
-                    background:#f2f2f2;
-                    border-radius:6px;
-                "
-            >
-                <div
-                    style="
-                        font-size:12px;
-                        font-weight:bold;
-                        text-transform:uppercase;
-                        letter-spacing:0.5px;
-                        margin-bottom:4px;
-                    "
-                >
-                    Named Storm
-                </div>
-
-                <div
-                    style="
-                        font-size:21px;
-                        font-weight:bold;
-                    "
-                >
-                    {escape(storm_name)}
-                </div>
-            </div>
-        """
-
-    # -------------------------------------------------------------
-    # HEADLINE
-    # -------------------------------------------------------------
-
-    headline_html = ""
-
-    if (
-        headline
-        and headline.lower()
-        != title.lower()
-    ):
-
-        headline_html = f"""
-            <p
-                style="
-                    font-size:15px;
-                    font-weight:bold;
-                    line-height:1.5;
-                    margin:18px 0 8px 0;
-                "
-            >
-                {escape(headline)}
-            </p>
-        """
-
-    # -------------------------------------------------------------
-    # DESCRIPTION
-    # -------------------------------------------------------------
-
-    description_html = ""
-
-    if description:
-
-        description_html = f"""
-            <div
-                style="
-                    margin-top:14px;
-                    font-size:14px;
-                    line-height:1.6;
-                    white-space:pre-line;
-                "
-            >
-                {escape(description)}
-            </div>
-        """
-
-    # -------------------------------------------------------------
-    # INSTRUCTIONS
-    # -------------------------------------------------------------
-
-    instruction_html = ""
-
-    if instruction:
-
-        instruction_html = f"""
-            <div
-                style="
-                    margin-top:18px;
-                    padding:14px;
-                    border-left:4px solid #555555;
-                    background:#f7f7f7;
-                "
-            >
-                <div
-                    style="
-                        font-weight:bold;
-                        margin-bottom:6px;
-                    "
-                >
-                    Safety Instructions
-                </div>
-
-                <div
-                    style="
-                        font-size:14px;
-                        line-height:1.6;
-                        white-space:pre-line;
-                    "
-                >
-                    {escape(instruction)}
-                </div>
-            </div>
-        """
-
-    urgency_html = ""
+    facts.append(
+        (
+            "Severity",
+            severity
+        )
+    )
 
     if urgency:
 
-        urgency_html = f"""
-            <tr>
-                <td
-                    style="
-                        padding:6px 10px 6px 0;
-                        font-weight:bold;
-                        vertical-align:top;
-                    "
-                >
-                    Urgency
-                </td>
+        facts.append(
+            (
+                "Urgency",
+                urgency
+            )
+        )
 
-                <td
-                    style="
-                        padding:6px 0;
-                    "
-                >
-                    {escape(urgency)}
-                </td>
-            </tr>
+    facts.append(
+        (
+            "Affected States",
+            affected_states
+        )
+    )
+
+    if max_winds:
+
+        facts.append(
+            (
+                "Maximum Winds",
+                max_winds
+            )
+        )
+
+    if movement:
+
+        facts.append(
+            (
+                "Movement",
+                movement
+            )
+        )
+
+    if pressure:
+
+        facts.append(
+            (
+                "Pressure",
+                pressure
+            )
+        )
+
+    facts.append(
+        (
+            "Effective",
+            effective
+        )
+    )
+
+    facts.append(
+        (
+            "Expires",
+            expires
+        )
+    )
+
+    return facts
+
+
+# ---------------------------------------------------------------------
+# HTML ALERT SECTION
+# ---------------------------------------------------------------------
+
+def build_alert_html(
+    alert
+):
+    """
+    Build a concise alert card containing quick storm facts.
+    """
+
+    storm_name = (
+        get_display_storm_name(
+            alert
+        )
+    )
+
+    event = safe_text(
+        alert.get(
+            "event"
+        ),
+        "Weather Alert"
+    )
+
+    title = (
+        storm_name
+        or get_alert_title(
+            alert
+        )
+    )
+
+    headline = safe_text(
+        alert.get(
+            "headline"
+        )
+    )
+
+    facts = build_storm_facts(
+        alert
+    )
+
+    bullet_html = ""
+
+    for label, value in facts:
+
+        bullet_html += f"""
+            <li
+                style="
+                    margin:0 0 9px 0;
+                    padding:0;
+                    line-height:1.5;
+                "
+            >
+                <strong>
+                    {escape(label)}:
+                </strong>
+
+                {escape(value)}
+            </li>
+        """
+
+    headline_html = ""
+
+    if headline:
+
+        headline_html = f"""
+            <div
+                style="
+                    margin-top:18px;
+                    padding:12px 14px;
+                    background:#f5f5f5;
+                    border-radius:6px;
+                    font-size:14px;
+                    line-height:1.5;
+                "
+            >
+                <strong>
+                    Latest NWS Update:
+                </strong>
+
+                <br>
+
+                {escape(headline)}
+            </div>
         """
 
     return f"""
         <div
             style="
-                margin-bottom:28px;
+                margin:0 0 24px 0;
                 border:1px solid #d8d8d8;
                 border-radius:8px;
                 overflow:hidden;
@@ -779,7 +817,7 @@ def build_alert_html(alert):
 
                 <div
                     style="
-                        font-size:22px;
+                        font-size:24px;
                         font-weight:bold;
                         line-height:1.3;
                     "
@@ -789,10 +827,11 @@ def build_alert_html(alert):
 
                 <div
                     style="
-                        margin-top:8px;
+                        margin-top:5px;
+                        font-size:15px;
                     "
                 >
-                    {severity_badge_html(severity)}
+                    {escape(event)}
                 </div>
 
             </div>
@@ -803,149 +842,27 @@ def build_alert_html(alert):
                 "
             >
 
-                {storm_html}
-
-                <table
-                    width="100%"
-                    cellpadding="0"
-                    cellspacing="0"
+                <div
                     style="
-                        border-collapse:collapse;
+                        margin-bottom:12px;
+                        font-size:16px;
+                        font-weight:bold;
+                    "
+                >
+                    Storm Summary
+                </div>
+
+                <ul
+                    style="
+                        margin:0;
+                        padding-left:22px;
                         font-size:14px;
                     "
                 >
-
-                    <tr>
-                        <td
-                            style="
-                                padding:6px 10px 6px 0;
-                                font-weight:bold;
-                                vertical-align:top;
-                                width:135px;
-                            "
-                        >
-                            Alert Type
-                        </td>
-
-                        <td
-                            style="
-                                padding:6px 0;
-                            "
-                        >
-                            {escape(event)}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td
-                            style="
-                                padding:6px 10px 6px 0;
-                                font-weight:bold;
-                                vertical-align:top;
-                            "
-                        >
-                            Affected States
-                        </td>
-
-                        <td
-                            style="
-                                padding:6px 0;
-                                font-weight:bold;
-                            "
-                        >
-                            {escape(states)}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td
-                            style="
-                                padding:6px 10px 6px 0;
-                                font-weight:bold;
-                                vertical-align:top;
-                            "
-                        >
-                            Severity
-                        </td>
-
-                        <td
-                            style="
-                                padding:6px 0;
-                            "
-                        >
-                            {escape(severity)}
-                        </td>
-                    </tr>
-
-                    {urgency_html}
-
-                    <tr>
-                        <td
-                            style="
-                                padding:6px 10px 6px 0;
-                                font-weight:bold;
-                                vertical-align:top;
-                            "
-                        >
-                            Effective
-                        </td>
-
-                        <td
-                            style="
-                                padding:6px 0;
-                            "
-                        >
-                            {escape(effective)}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td
-                            style="
-                                padding:6px 10px 6px 0;
-                                font-weight:bold;
-                                vertical-align:top;
-                            "
-                        >
-                            Onset
-                        </td>
-
-                        <td
-                            style="
-                                padding:6px 0;
-                            "
-                        >
-                            {escape(onset)}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td
-                            style="
-                                padding:6px 10px 6px 0;
-                                font-weight:bold;
-                                vertical-align:top;
-                            "
-                        >
-                            Expires
-                        </td>
-
-                        <td
-                            style="
-                                padding:6px 0;
-                            "
-                        >
-                            {escape(expires)}
-                        </td>
-                    </tr>
-
-                </table>
+                    {bullet_html}
+                </ul>
 
                 {headline_html}
-
-                {description_html}
-
-                {instruction_html}
 
             </div>
 
@@ -953,12 +870,89 @@ def build_alert_html(alert):
     """
 
 
-def build_email_html(
-    alert_summaries,
-    map_attached=False
+# ---------------------------------------------------------------------
+# MAP HTML
+# ---------------------------------------------------------------------
+
+def build_map_html(
+    map_available
 ):
     """
-    Build the complete HTML notification.
+    Build inline map area.
+
+    Map is referenced using CID and added to the HTML part
+    later by attach_inline_map().
+    """
+
+    if not map_available:
+
+        return """
+            <div
+                style="
+                    margin:0 0 24px 0;
+                    padding:14px;
+                    background:#f5f5f5;
+                    border-radius:6px;
+                    font-size:13px;
+                "
+            >
+                An affected-area map was not available for this alert.
+            </div>
+        """
+
+    return f"""
+        <div
+            style="
+                margin:0 0 28px 0;
+            "
+        >
+
+            <div
+                style="
+                    margin-bottom:10px;
+                    font-size:17px;
+                    font-weight:bold;
+                "
+            >
+                Affected Area Map
+            </div>
+
+            <div
+                style="
+                    border:1px solid #dddddd;
+                    border-radius:8px;
+                    overflow:hidden;
+                    background:#ffffff;
+                "
+            >
+
+                <img
+                    src="cid:{MAP_CONTENT_ID}"
+                    alt="Map of affected weather alert areas"
+                    style="
+                        width:100%;
+                        max-width:720px;
+                        height:auto;
+                        display:block;
+                    "
+                >
+
+            </div>
+
+        </div>
+    """
+
+
+# ---------------------------------------------------------------------
+# COMPLETE HTML EMAIL
+# ---------------------------------------------------------------------
+
+def build_email_html(
+    alert_summaries,
+    map_available=False
+):
+    """
+    Build the complete HTML email.
     """
 
     storm_names = get_storm_names(
@@ -969,86 +963,52 @@ def build_email_html(
         alert_summaries
     )
 
-    alert_count = len(
-        alert_summaries
-    )
-
-    # -------------------------------------------------------------
-    # TOP SUMMARY
-    # -------------------------------------------------------------
-
     if len(storm_names) == 1:
 
-        top_title = storm_names[0]
+        header_title = (
+            storm_names[0]
+        )
 
     elif len(storm_names) > 1:
 
-        top_title = (
+        header_title = (
             "Multiple Tropical Systems"
         )
 
     else:
 
-        top_title = (
+        header_title = (
             "Severe Tropical Weather"
         )
 
     if all_states:
 
-        state_text = ", ".join(
+        states_text = ", ".join(
             all_states
         )
 
     else:
 
-        state_text = (
-            "See alert details below"
+        states_text = (
+            "See alert details"
         )
 
-    storm_summary_html = ""
-
-    if storm_names:
-
-        storm_summary_html = f"""
-            <div
-                style="
-                    margin-top:10px;
-                    font-size:17px;
-                    font-weight:bold;
-                "
-            >
-                {escape(", ".join(storm_names))}
-            </div>
-        """
-
-    map_message = ""
-
-    if map_attached:
-
-        map_message = """
-            <div
-                style="
-                    margin:0 0 22px 0;
-                    padding:12px 14px;
-                    background:#f5f5f5;
-                    border-radius:6px;
-                    font-size:13px;
-                "
-            >
-                A national alert / prediction map is attached to this
-                notification.
-            </div>
-        """
-
     alert_sections = "".join(
-        build_alert_html(alert)
+        build_alert_html(
+            alert
+        )
         for alert in alert_summaries
+    )
+
+    map_html = build_map_html(
+        map_available
     )
 
     return f"""
 <!DOCTYPE html>
 
 <html>
+
 <head>
     <meta charset="UTF-8">
 </head>
@@ -1100,15 +1060,28 @@ def build_email_html(
 
                 <div
                     style="
-                        font-size:28px;
-                        font-weight:bold;
                         margin-top:8px;
+                        font-size:29px;
+                        font-weight:bold;
+                        line-height:1.25;
                     "
                 >
-                    {escape(top_title)}
+                    {escape(header_title)}
                 </div>
 
-                {storm_summary_html}
+                <div
+                    style="
+                        margin-top:10px;
+                        font-size:15px;
+                        line-height:1.5;
+                    "
+                >
+                    <strong>
+                        Affected States:
+                    </strong>
+
+                    {escape(states_text)}
+                </div>
 
             </div>
 
@@ -1118,38 +1091,9 @@ def build_email_html(
                 "
             >
 
-                <div
-                    style="
-                        margin-bottom:22px;
-                        padding-bottom:18px;
-                        border-bottom:1px solid #dddddd;
-                    "
-                >
-
-                    <div
-                        style="
-                            font-size:14px;
-                            margin-bottom:5px;
-                        "
-                    >
-                        <strong>Affected States:</strong>
-                        {escape(state_text)}
-                    </div>
-
-                    <div
-                        style="
-                            font-size:14px;
-                        "
-                    >
-                        <strong>Active Notices:</strong>
-                        {alert_count}
-                    </div>
-
-                </div>
-
-                {map_message}
-
                 {alert_sections}
+
+                {map_html}
 
                 <div
                     style="
@@ -1161,11 +1105,15 @@ def build_email_html(
                         line-height:1.5;
                     "
                 >
-                    Weather information is provided from active
-                    National Weather Service products. Conditions and
-                    warnings may change rapidly. Follow official local
-                    emergency-management and National Weather Service
-                    instructions.
+
+                    Weather information is based on active
+                    National Weather Service products.
+
+                    Conditions may change rapidly.
+
+                    Follow all official National Weather Service
+                    and local emergency-management instructions.
+
                 </div>
 
             </div>
@@ -1175,17 +1123,20 @@ def build_email_html(
     </div>
 
 </body>
+
 </html>
     """
 
 
 # ---------------------------------------------------------------------
-# PLAIN-TEXT EMAIL
+# PLAIN TEXT VERSION
 # ---------------------------------------------------------------------
 
-def build_plain_text_email(alert_summaries):
+def build_plain_text_email(
+    alert_summaries
+):
     """
-    Build a plain-text fallback version of the notification.
+    Build plain-text fallback.
     """
 
     storm_names = get_storm_names(
@@ -1205,7 +1156,7 @@ def build_plain_text_email(alert_summaries):
     if storm_names:
 
         lines.append(
-            "NAMED STORM:"
+            "STORM:"
         )
 
         lines.append(
@@ -1236,107 +1187,65 @@ def build_plain_text_email(alert_summaries):
 
     for alert in alert_summaries:
 
-        title = get_alert_title(
-            alert
-        )
-
-        storm_name = safe_text(
-            alert.get(
-                "storm_display_name"
+        storm_name = (
+            get_display_storm_name(
+                alert
             )
         )
 
-        if not storm_name:
-
-            storm_name = safe_text(
-                alert.get(
-                    "storm_name"
-                )
+        title = (
+            storm_name
+            or get_alert_title(
+                alert
             )
+        )
 
         lines.extend([
             title,
             "-" * len(title),
-            ""
+            "",
+            "STORM SUMMARY"
         ])
 
-        if storm_name:
+        facts = build_storm_facts(
+            alert
+        )
+
+        for label, value in facts:
 
             lines.append(
-                f"Storm: {storm_name}"
+                f"• {label}: {value}"
             )
 
-        lines.extend([
-            (
-                "Alert Type: "
-                f"{safe_text(alert.get('event'), 'Weather Alert')}"
-            ),
-            (
-                "Severity: "
-                f"{safe_text(alert.get('severity'), 'Unknown')}"
-            ),
-            (
-                "Affected States: "
-                f"{get_state_text(alert)}"
-            ),
-            (
-                "Effective: "
-                f"{format_datetime(alert.get('effective'))}"
-            ),
-            (
-                "Expires: "
-                f"{format_datetime(alert.get('ends') or alert.get('expires'))}"
-            ),
-            ""
-        ])
-
         headline = safe_text(
-            alert.get("headline")
+            alert.get(
+                "headline"
+            )
         )
 
         if headline:
 
             lines.extend([
-                headline,
-                ""
-            ])
-
-        description = safe_text(
-            alert.get("description")
-        )
-
-        if description:
-
-            lines.extend([
-                description,
-                ""
-            ])
-
-        instruction = safe_text(
-            alert.get("instruction")
-        )
-
-        if instruction:
-
-            lines.extend([
-                "SAFETY INSTRUCTIONS:",
-                instruction,
-                ""
+                "",
+                (
+                    "Latest NWS Update: "
+                    f"{headline}"
+                )
             ])
 
         lines.extend([
+            "",
             "=" * 60,
             ""
         ])
 
     lines.extend([
+        "A generated affected-area map is included "
+        "in the HTML version of this email.",
+        "",
         (
-            "Weather information is based on active "
-            "National Weather Service products."
-        ),
-        (
-            "Follow official local emergency-management "
-            "instructions."
+            "Follow official National Weather Service "
+            "and local emergency-management instructions."
         )
     ])
 
@@ -1346,17 +1255,22 @@ def build_plain_text_email(alert_summaries):
 
 
 # ---------------------------------------------------------------------
-# FILE ATTACHMENT
+# INLINE MAP
 # ---------------------------------------------------------------------
 
-def attach_map(
-    message,
+def attach_inline_map(
+    html_part,
     map_file
 ):
     """
-    Attach the generated weather map to the email.
+    Embed the generated map directly into the HTML email.
 
-    Returns True when an attachment was successfully added.
+    The HTML references it as:
+
+        cid:affected-area-map
+
+    Returns:
+        bool
     """
 
     if not map_file:
@@ -1376,40 +1290,58 @@ def attach_map(
 
     try:
 
-        mime_type, _ = mimetypes.guess_type(
-            map_file
+        mime_type, _ = (
+            mimetypes.guess_type(
+                map_file
+            )
         )
 
         if mime_type:
 
-            main_type, sub_type = mime_type.split(
-                "/",
-                1
+            main_type, sub_type = (
+                mime_type.split(
+                    "/",
+                    1
+                )
             )
 
         else:
 
-            main_type = "application"
-            sub_type = "octet-stream"
+            main_type = "image"
+            sub_type = "png"
+
+        # Inline content should be an image.
+        if main_type != "image":
+
+            logger.warning(
+                "Generated map is not an image: %s",
+                map_file
+            )
+
+            return False
 
         with open(
             map_file,
             "rb"
         ) as file_handle:
 
-            file_data = file_handle.read()
+            map_data = (
+                file_handle.read()
+            )
 
-        message.add_attachment(
-            file_data,
+        html_part.add_related(
+            map_data,
             maintype=main_type,
             subtype=sub_type,
+            cid=f"<{MAP_CONTENT_ID}>",
             filename=os.path.basename(
                 map_file
-            )
+            ),
+            disposition="inline"
         )
 
         logger.info(
-            "Attached weather map: %s",
+            "Embedded affected-area map: %s",
             map_file
         )
 
@@ -1418,7 +1350,7 @@ def attach_map(
     except Exception as error:
 
         logger.exception(
-            "Unable to attach map file: %s",
+            "Unable to embed map in email: %s",
             error
         )
 
@@ -1431,35 +1363,37 @@ def attach_map(
 
 def validate_email_configuration():
     """
-    Validate required email settings before attempting SMTP delivery.
-
-    Returns:
-        bool
+    Verify required SMTP settings.
     """
 
     missing = []
 
     if not SMTP_SERVER:
+
         missing.append(
             "SMTP_SERVER"
         )
 
     if not SMTP_PORT:
+
         missing.append(
             "SMTP_PORT"
         )
 
     if not EMAIL_USER:
+
         missing.append(
             "EMAIL_USER"
         )
 
     if not EMAIL_PASSWORD:
+
         missing.append(
             "EMAIL_PASSWORD"
         )
 
     if not EMAIL_FROM:
+
         missing.append(
             "EMAIL_FROM"
         )
@@ -1476,7 +1410,9 @@ def validate_email_configuration():
 
         logger.error(
             "Missing email configuration: %s",
-            ", ".join(missing)
+            ", ".join(
+                missing
+            )
         )
 
         return False
@@ -1485,7 +1421,7 @@ def validate_email_configuration():
 
 
 # ---------------------------------------------------------------------
-# EMAIL DELIVERY
+# SEND EMAIL
 # ---------------------------------------------------------------------
 
 def send_weather_alert(
@@ -1493,56 +1429,44 @@ def send_weather_alert(
     map_file=None
 ):
     """
-    Send one condensed notification email containing all consolidated
-    weather alerts.
+    Send one consolidated weather alert email.
 
-    This function is called from main.py as:
+    Expected usage from main.py:
 
         send_weather_alert(
             alert_summaries,
             map_file
         )
 
-    Args:
-        alert_summaries:
-            List of dictionaries produced by
-            weather_api.summarize_alert().
-
-        map_file:
-            Optional path to generated map image.
-
     Returns:
-        bool:
-            True if the email was sent successfully.
-            False if sending failed.
+        True  -> email sent
+        False -> email failed
     """
 
     if not alert_summaries:
 
         logger.info(
-            "No weather alerts supplied to emailer."
+            "No alerts supplied to emailer."
         )
 
         return False
 
     if not validate_email_configuration():
 
-        logger.error(
-            "Email configuration is incomplete."
-        )
-
         return False
 
-    recipients = normalize_recipient_list(
-        EMAIL_TO
+    recipients = (
+        normalize_recipient_list(
+            EMAIL_TO
+        )
     )
 
-    subject = build_email_subject(
-        alert_summaries
+    subject = (
+        build_email_subject(
+            alert_summaries
+        )
     )
 
-    # Determine whether the map exists before creating the HTML
-    # message so the body can mention the attachment accurately.
     map_available = bool(
         map_file
         and os.path.exists(
@@ -1550,52 +1474,85 @@ def send_weather_alert(
         )
     )
 
-    plain_text_body = build_plain_text_email(
-        alert_summaries
+    plain_body = (
+        build_plain_text_email(
+            alert_summaries
+        )
     )
 
-    html_body = build_email_html(
-        alert_summaries,
-        map_attached=map_available
+    html_body = (
+        build_email_html(
+            alert_summaries,
+            map_available=map_available
+        )
     )
 
     message = EmailMessage()
 
-    message["Subject"] = subject
+    message["Subject"] = (
+        subject
+    )
 
-    message["From"] = formataddr(
-        (
-            FROM_DISPLAY_NAME,
-            EMAIL_FROM
+    message["From"] = (
+        formataddr(
+            (
+                FROM_DISPLAY_NAME,
+                EMAIL_FROM
+            )
         )
     )
 
-    message["To"] = ", ".join(
-        recipients
+    message["To"] = (
+        ", ".join(
+            recipients
+        )
     )
 
     # Plain-text fallback.
     message.set_content(
-        plain_text_body
+        plain_body
     )
 
-    # HTML version.
+    # Add HTML alternative.
     message.add_alternative(
         html_body,
         subtype="html"
     )
 
-    # Attach generated map.
+    # EmailMessage now contains:
+    #
+    # multipart/alternative
+    #   text/plain
+    #   text/html
+    #
+    # Retrieve the HTML part so the generated map can be
+    # attached as a related CID image.
+
     if map_available:
 
-        attach_map(
-            message,
-            map_file
-        )
+        try:
+
+            html_part = (
+                message.get_payload()[-1]
+            )
+
+            attach_inline_map(
+                html_part,
+                map_file
+            )
+
+        except Exception as error:
+
+            logger.exception(
+                "Unable to prepare inline map: %s",
+                error
+            )
 
     logger.info(
-        "Preparing weather notification for %s recipient(s).",
-        len(recipients)
+        "Sending weather alert to %s recipient(s).",
+        len(
+            recipients
+        )
     )
 
     logger.info(
@@ -1605,12 +1562,19 @@ def send_weather_alert(
 
     try:
 
-        # Port 465 normally uses implicit SSL.
-        if int(SMTP_PORT) == 465:
+        # ---------------------------------------------------------
+        # SMTP SSL - PORT 465
+        # ---------------------------------------------------------
+
+        if int(
+            SMTP_PORT
+        ) == 465:
 
             with smtplib.SMTP_SSL(
                 SMTP_SERVER,
-                int(SMTP_PORT),
+                int(
+                    SMTP_PORT
+                ),
                 timeout=30
             ) as smtp:
 
@@ -1625,12 +1589,17 @@ def send_weather_alert(
                     to_addrs=recipients
                 )
 
+        # ---------------------------------------------------------
+        # STARTTLS - PORT 587 / OTHER
+        # ---------------------------------------------------------
+
         else:
 
-            # Port 587 normally uses STARTTLS.
             with smtplib.SMTP(
                 SMTP_SERVER,
-                int(SMTP_PORT),
+                int(
+                    SMTP_PORT
+                ),
                 timeout=30
             ) as smtp:
 
