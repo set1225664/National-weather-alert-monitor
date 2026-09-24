@@ -1,4 +1,3 @@
-```python
 """
 National Weather Service API Client.
 
@@ -40,7 +39,7 @@ NWS_HEADERS = {
         "Nationwide-Severe-Weather-Alert-System/1.0 "
         "(weather-alert-monitor)"
     ),
-    "Accept": "application/geo+json"
+    "Accept": "application/geo+json",
 }
 
 REQUEST_TIMEOUT = 30
@@ -56,21 +55,16 @@ TROPICAL_ALERT_TYPES = {
     "Hurricane Local Statement",
     "Hurricane Force Wind Warning",
     "Hurricane Force Wind Watch",
-
     "Tropical Storm Warning",
     "Tropical Storm Watch",
     "Tropical Storm Local Statement",
-
     "Storm Surge Warning",
     "Storm Surge Watch",
-
     "Extreme Wind Warning",
-
     "Tropical Cyclone Statement",
     "Tropical Cyclone Local Statement",
-
     "Typhoon Warning",
-    "Typhoon Watch"
+    "Typhoon Watch",
 }
 
 
@@ -136,7 +130,7 @@ STATE_ABBREVIATIONS = {
     "VI": "U.S. Virgin Islands",
     "GU": "Guam",
     "AS": "American Samoa",
-    "MP": "Northern Mariana Islands"
+    "MP": "Northern Mariana Islands",
 }
 
 
@@ -198,7 +192,7 @@ STATE_FIPS = {
     "66": "Guam",
     "69": "Northern Mariana Islands",
     "72": "Puerto Rico",
-    "78": "U.S. Virgin Islands"
+    "78": "U.S. Virgin Islands",
 }
 
 
@@ -247,7 +241,7 @@ def get_alert_text(alert):
         properties.get("event"),
         properties.get("headline"),
         properties.get("description"),
-        properties.get("instruction")
+        properties.get("instruction"),
     ]
 
     return "\n".join(
@@ -277,7 +271,7 @@ def get_active_alerts():
     response = requests.get(
         NWS_ALERTS_URL,
         headers=NWS_HEADERS,
-        timeout=REQUEST_TIMEOUT
+        timeout=REQUEST_TIMEOUT,
     )
 
     response.raise_for_status()
@@ -286,7 +280,7 @@ def get_active_alerts():
 
     alerts = data.get(
         "features",
-        []
+        [],
     )
 
     if not isinstance(alerts, list):
@@ -300,7 +294,7 @@ def get_active_alerts():
 
     logger.info(
         "NWS returned %s active alerts.",
-        len(alerts)
+        len(alerts),
     )
 
     return alerts
@@ -335,7 +329,7 @@ def is_tropical_alert(alert):
         "tropical cyclone",
         "storm surge",
         "subtropical storm",
-        "typhoon"
+        "typhoon",
     )
 
     return any(
@@ -369,7 +363,7 @@ def is_severe_tropical_alert(alert):
 
     return severity in {
         "severe",
-        "extreme"
+        "extreme",
     }
 
 
@@ -386,7 +380,7 @@ def get_national_hurricane_alerts():
 
         logger.error(
             "Unable to retrieve National Weather Service alerts: %s",
-            error
+            error,
         )
 
         raise
@@ -399,7 +393,7 @@ def get_national_hurricane_alerts():
 
     logger.info(
         "Active tropical/hurricane alerts after filtering: %s",
-        len(hurricane_alerts)
+        len(hurricane_alerts),
     )
 
     return hurricane_alerts
@@ -432,7 +426,7 @@ def extract_storm_name(alert):
         r"\bTropical Storm\s+([A-Za-z][A-Za-z'-]+)",
         r"\bSubtropical Storm\s+([A-Za-z][A-Za-z'-]+)",
         r"\bTropical Depression\s+([A-Za-z0-9][A-Za-z0-9'-]+)",
-        r"\bTyphoon\s+([A-Za-z][A-Za-z'-]+)"
+        r"\bTyphoon\s+([A-Za-z][A-Za-z'-]+)",
     ]
 
     ignored_names = {
@@ -443,7 +437,7 @@ def extract_storm_name(alert):
         "force",
         "winds",
         "wind",
-        "local"
+        "local",
     }
 
     for pattern in patterns:
@@ -451,7 +445,7 @@ def extract_storm_name(alert):
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         if not match:
@@ -502,7 +496,7 @@ def extract_storm_status(alert):
         "Tropical Storm",
         "Subtropical Storm",
         "Tropical Depression",
-        "Tropical Cyclone"
+        "Tropical Cyclone",
     ]
 
     for classification in classifications:
@@ -512,7 +506,7 @@ def extract_storm_status(alert):
             + re.escape(classification)
             + r"\b",
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         ):
 
             return classification
@@ -542,9 +536,6 @@ def get_storm_display_name(alert):
 
     if storm_status:
 
-        # Tropical Cyclone is intentionally less specific, so if the
-        # text also contains a more useful classification it will have
-        # already been selected above.
         return (
             f"{storm_status} "
             f"{storm_name}"
@@ -560,14 +551,6 @@ def get_storm_display_name(alert):
 def extract_max_winds(alert):
     """
     Extract maximum sustained wind speed when present.
-
-    Supports text such as:
-
-        maximum sustained winds are 115 mph
-        maximum sustained winds near 115 mph
-        sustained winds of 80 mph
-        maximum winds 100 mph
-        winds are 90 mph
 
     Returns:
         str | None
@@ -595,7 +578,7 @@ def extract_max_winds(alert):
             r"sustained winds?"
             r"(?:\s+are|\s+near|\s+of|\s+around)?"
             r"\s*(\d{1,3})\s*(?:mph|m\.p\.h\.)"
-        )
+        ),
     ]
 
     for pattern in patterns:
@@ -603,7 +586,7 @@ def extract_max_winds(alert):
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         if match:
@@ -612,7 +595,6 @@ def extract_max_winds(alert):
                 f"{match.group(1)} mph"
             )
 
-    # NHC-style bulletins can use KT instead of mph.
     knot_patterns = [
         (
             r"maximum sustained winds?"
@@ -623,7 +605,7 @@ def extract_max_winds(alert):
             r"maximum winds?"
             r"(?:\s+are|\s+near|\s+of|\s+around)?"
             r"\s*(\d{1,3})\s*(?:kt|knots?)"
-        )
+        ),
     ]
 
     for pattern in knot_patterns:
@@ -631,7 +613,7 @@ def extract_max_winds(alert):
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         if match:
@@ -721,28 +703,18 @@ def normalize_direction(direction):
 
         "NNW": "NNW",
         "NORTH-NORTHWEST": "NNW",
-        "NORTH NORTHWEST": "NNW"
+        "NORTH NORTHWEST": "NNW",
     }
 
     return direction_map.get(
         direction,
-        direction
+        direction,
     )
 
 
 def extract_movement(alert):
     """
     Extract storm direction and forward speed.
-
-    Supports examples such as:
-
-        moving northwest at 12 mph
-        movement NW at 12 mph
-        moving toward the northwest near 12 mph
-        moving west at 10 knots
-
-    Returns:
-        str | None
 
     Example:
         "NW at 12 mph"
@@ -777,7 +749,7 @@ def extract_movement(alert):
             + direction_pattern
             + r"\s+(?:at|near)\s+"
             r"(\d{1,3})\s*(mph|kt|knots?)"
-        )
+        ),
     ]
 
     for pattern in patterns:
@@ -785,7 +757,7 @@ def extract_movement(alert):
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         if not match:
@@ -804,7 +776,7 @@ def extract_movement(alert):
         if unit in {
             "kt",
             "knot",
-            "knots"
+            "knots",
         }:
 
             mph = round(
@@ -833,16 +805,6 @@ def extract_pressure(alert):
     """
     Extract minimum central pressure.
 
-    Supports:
-
-        minimum central pressure is 960 mb
-        central pressure 960 mb
-        minimum pressure 960 millibars
-        pressure...960 mb
-
-    Returns:
-        str | None
-
     Example:
         "960 mb"
     """
@@ -866,7 +828,7 @@ def extract_pressure(alert):
             r"minimum pressure"
             r"(?:\s+is|\s+near|\s+of|\s*:)?"
             r"\s*(\d{3,4})\s*(?:mb|millibars?)"
-        )
+        ),
     ]
 
     for pattern in patterns:
@@ -874,7 +836,7 @@ def extract_pressure(alert):
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         if match:
@@ -895,11 +857,8 @@ def extract_hurricane_category(alert):
     Extract Saffir-Simpson category when explicitly stated.
 
     Returns examples such as:
-
         "Category 1"
         "Category 4"
-
-    Returns None if the category is not explicitly provided.
     """
 
     text = get_alert_text(
@@ -908,7 +867,7 @@ def extract_hurricane_category(alert):
 
     patterns = [
         r"\bCategory\s+([1-5])\b",
-        r"\bCategory\s+([1-5])\s+Hurricane\b"
+        r"\bCategory\s+([1-5])\s+Hurricane\b",
     ]
 
     for pattern in patterns:
@@ -916,7 +875,7 @@ def extract_hurricane_category(alert):
         match = re.search(
             pattern,
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         if match:
@@ -956,7 +915,7 @@ def extract_states_from_area_description(area_desc):
 
         if re.search(
             pattern,
-            area_desc
+            area_desc,
         ):
 
             states.add(
@@ -987,12 +946,12 @@ def extract_states_from_same_codes(alert):
 
     geocode = properties.get(
         "geocode",
-        {}
+        {},
     ) or {}
 
     same_codes = geocode.get(
         "SAME",
-        []
+        [],
     ) or []
 
     states = set()
@@ -1037,7 +996,6 @@ def extract_states_from_ugc_codes(alert):
     Extract affected states from NWS UGC zone codes.
 
     Example:
-
         FLZ063 -> Florida
         GAZ001 -> Georgia
     """
@@ -1048,12 +1006,12 @@ def extract_states_from_ugc_codes(alert):
 
     geocode = properties.get(
         "geocode",
-        {}
+        {},
     ) or {}
 
     ugc_codes = geocode.get(
         "UGC",
-        []
+        [],
     ) or []
 
     states = set()
@@ -1145,7 +1103,7 @@ def get_original_affected_areas(alert):
 
     if isinstance(
         affected_areas,
-        list
+        list,
     ):
 
         return sorted(
@@ -1453,7 +1411,6 @@ def summarize_alert(alert):
 
         "source_alert_ids": alert.get(
             "_source_alert_ids",
-            []
-        )
+            [],
+        ),
     }
-```
