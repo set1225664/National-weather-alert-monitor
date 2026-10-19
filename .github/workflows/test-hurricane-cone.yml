@@ -1,0 +1,30 @@
+name: Test Hurricane Cone Map
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-cone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install map dependencies
+        run: python -m pip install matplotlib cartopy shapely
+      - name: Validate test script
+        run: python -m py_compile test_hurricane_cone.py
+      - name: Generate simulated five-day cone
+        run: python test_hurricane_cone.py
+      - name: Upload map as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulated-five-day-hurricane-cone
+          path: artifacts/test_hurricane_cone.png
+          if-no-files-found: error
