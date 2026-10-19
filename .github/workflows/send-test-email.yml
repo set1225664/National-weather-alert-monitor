@@ -19,7 +19,7 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Verify syntax
-        run: python -m py_compile emailer.py test_email.py
+        run: python -m py_compile emailer.py map_generator.py test_email.py
 
       - name: Send test email
         env:
